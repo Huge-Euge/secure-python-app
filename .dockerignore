@@ -16,12 +16,6 @@ build/
 dist/
 *.egg-info
 
-# Sensitive files and secrets
-# These should be handled by GitHub Secrets, not copied into the build context.
-key.pem
-cert.pem
-.env
-
 # IDE and OS-specific files
 .idea/
 .vscode/
