@@ -1,0 +1,36 @@
+# Git and GitHub specific
+.git
+.github
+.github/
+
+# Python cache and virtual environment
+__pycache__/
+*.pyc
+*.pyo
+.venv
+venv/
+
+# Testing and build artifacts
+.pytest_cache
+build/
+dist/
+*.egg-info
+
+# Sensitive files and secrets
+# These should be handled by GitHub Secrets, not copied into the build context.
+key.pem
+cert.pem
+.env
+
+# IDE and OS-specific files
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+
+# Other project files not needed in the image
+eugene-jensen-secu73000-assignment-2.md
+shell.nix
+build.sh
+docker-compose.yml
