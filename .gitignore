@@ -187,3 +187,9 @@ Assignment-2.pdf
 # .pylintrc
 .python-version
 .vscode/
+
+# SSL certs
+*.pem
+
+# SQLite db
+database.db
