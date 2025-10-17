@@ -91,4 +91,4 @@ if __name__ == "__main__":
     port = config["server"]["port"]
 
     # NOTE: change debug to false in final version, maybe switch to a config file
-    app.run(host=host, port=port, debug=True)
+    app.run(host=host, port=port, debug=True, ssl_context=("cert.pem", "key.pem"))
