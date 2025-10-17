@@ -14,7 +14,9 @@ venv/
 .pytest_cache
 build/
 dist/
+tests/
 *.egg-info
+requirements-dev.txt
 
 # IDE and OS-specific files
 .idea/
