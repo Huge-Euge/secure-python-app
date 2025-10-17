@@ -81,14 +81,14 @@ if __name__ == "__main__":
             "CREATE TABLE IF NOT EXISTS notes (id INTEGER PRIMARY KEY, user_id INTEGER, content TEXT)"
         )
 
-    # NOTE: is it secure to do this? I think so but idk
     with open("config.json", "r") as f:
         config = json.load(f)
     if os.path.exists("/.dockerenv"):
         host = config["server"]["host_on_docker"]
+        port = config["server"]["port_on_docker"]
     else:
         host = config["server"]["host_off_docker"]
-    port = config["server"]["port"]
+        port = config["server"]["port_off_docker"]
 
     # NOTE: change debug to false in final version, maybe switch to a config file
     app.run(host=host, port=port, debug=True, ssl_context=("cert.pem", "key.pem"))

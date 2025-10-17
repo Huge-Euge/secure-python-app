@@ -2,6 +2,7 @@
   "server": {
     "host_on_docker": "0.0.0.0",
     "host_off_docker": "127.0.0.1",
-    "port": 8008
+    "port_on_docker": "8443",
+    "port_off_docker": "443",
   }
 }

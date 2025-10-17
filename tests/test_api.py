@@ -14,9 +14,10 @@ def base_url():
         config = json.load(f)
     if os.path.exists("/.dockerenv"):
         host = config["server"]["host_on_docker"]
+        port = config["server"]["port_on_docker"]
     else:
         host = config["server"]["host_off_docker"]
-    port = config["server"]["port"]
+        port = config["server"]["port_off_docker"]
 
     # Construct and return the URL
     return f"https://{host}:{port}"
