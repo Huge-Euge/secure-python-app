@@ -14,7 +14,10 @@ def get_db():
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
+        # NOTE: there is no input validation here
+        # NOTE: if there are multiple users with the same username, this breaks
         username = request.form["username"]
+        # NOTE: IDK if this password is being sent unencrypted, also this is almost certainly wrong in some way
         password = generate_password_hash(request.form["password"])
         db = get_db()
         db.execute(
@@ -25,10 +28,12 @@ def register():
     return render_template("register.html")
 
 
+# NOTE: there is no brute-force prevention here
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         db = get_db()
+        # NOTE: there is no input validation here
         user = db.execute(
             "SELECT * FROM users WHERE username = ?", (request.form["username"],)
         ).fetchone()
@@ -40,10 +45,14 @@ def login():
 
 @app.route("/notes", methods=["GET", "POST"])
 def notes():
+    # NOTE: all this checks for is an id, which is just an integer, this can be guessed easily
+    # NOTE: There is no session timeout here, there should be
     if "user_id" not in session:
         return redirect("/login")
     db = get_db()
     if request.method == "POST":
+        # NOTE: need to validate this input
+        # NOTE: This is not behind any auth, well it checks if user_id is in session, but idk if an attacker could set that manually
         note = request.form["note"]
         db.execute(
             "INSERT INTO notes (user_id, content) VALUES (?, ?)",
@@ -62,6 +71,7 @@ def index():
 
 
 if __name__ == "__main__":
+    # NOTE: there are no backups on the db
     with get_db() as db:
         db.execute(
             "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT, password TEXT)"
@@ -75,4 +85,5 @@ if __name__ == "__main__":
     else:
         host = "127.0.0.1"
 
+        # NOTE: change debug to false in final version, maybe switch to a config file
     app.run(host=host, port=5000, debug=True)
