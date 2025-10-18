@@ -1,13 +1,14 @@
-# Dockerfile
-FROM python:3.11-slim
+FROM python:3.13-slim
 
-WORKDIR /app
+WORKDIR /proj_root
 
-COPY app/requirements.txt requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy requirements file and install app dependencies
+COPY requirements.txt ./
+RUN pip install -r requirements.txt 
 
-COPY app .
+EXPOSE 8443
 
-EXPOSE 5000
+# copy in project files
+COPY . .
 
-CMD ["python", "app.py"]
+CMD ["python", "app/app.py"]
