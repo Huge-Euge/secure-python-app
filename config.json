@@ -2,5 +2,28 @@
   "server": {
     "host": "0.0.0.0",
     "port": "8443"
-  }
+  },
+  "debug_bool": true,
+  "seed_users": [
+    {
+      "username": "ken123",
+      "password": "gizzanga"
+    },
+    {
+      "username": "user80000008",
+      "password": "userpassword"
+    },
+    {
+      "username": "alice-gabrielle",
+      "password": "wonderland"
+    },
+    {
+      "username": "stevehendrikse",
+      "password": "professor"
+    },
+    {
+      "username": "charlie",
+      "password": "chocolate"
+    }
+  ]
 }

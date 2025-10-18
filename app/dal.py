@@ -110,7 +110,7 @@ class Sqlite3DAL:
             note = db_.execute(
                 "SELECT content FROM notes WHERE id = ?", (note_id,)
             ).fetchone()
-            return Result.Success(value=note)
+            return Result.Success(note)
         except sqlite3.Error as e:
             print(f"Database error in get_note_by_id: {e}")
             return Result.Error("Could not retrieve note due to a database error.")
@@ -125,7 +125,7 @@ class Sqlite3DAL:
             notes = db_.execute(
                 "SELECT content FROM notes WHERE user_id = ?", (user_id,)
             ).fetchall()
-            return Result.Success(value=notes)
+            return Result.Success(notes)
         except sqlite3.Error as e:
             print(f"Database error in get_notes_for_user: {e}")
             return Result.Error("Could not retrieve notes due to a database error.")
@@ -184,26 +184,6 @@ class Sqlite3DAL:
         """
         Delete a note by id
         Returns Result.Success() or Result.Error.
-        """
-        try:
-            cursor = db_.execute(
-                "DELETE FROM notes WHERE id = ?",
-                (note_id,),
-            )
-            db_.commit()
-
-            if cursor.rowcount == 0:
-                # No note was found with that id
-                return Result.Error("No note found with that id")
-            return Result.Success()
-        except sqlite3.Error as e:
-            print(f"Database error in delete_note: {e}")
-            return Result.Error("Could not delete note due to a database error.")
-
-    @staticmethod
-    def seed_users(db_: DbConnection):
-        """
-        Seed the initial user values for testing and such.
         """
         try:
             cursor = db_.execute(
