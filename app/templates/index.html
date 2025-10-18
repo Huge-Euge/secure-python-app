@@ -1,10 +1,30 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <title>Flask App</title>
-    </head>
-    <body>
-        <h2>Welcome to Flask</h2>
-        <p>This is a basic template rendering example.</p>
-    </body>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ken's Secure Notes</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+
+    <header>
+        <h1>Ken's Secure Notes</h1>
+    </header>
+
+    <main class="button-container">
+            {% if session.user_id %}
+                <a href="{{ url_for('notes') }}" class="btn">View Your Notes</a>
+                <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
+            {% else %}
+                <a href="{{ url_for('login') }}" class="btn">Login</a>
+                <a href="{{ url_for('register') }}" class="btn">Register</a>
+            {% endif %}
+    </main>
+
+    <footer>
+        <p>&copy;2025 Eugene Jensen</p>
+    </footer>
+
+</body>
 </html>
