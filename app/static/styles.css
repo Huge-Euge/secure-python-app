@@ -1,0 +1,110 @@
+:root {
+    --lavender: #E6E6FA;
+    --dark-grey: #333333;
+    --light-grey: #f4f4f4;
+    --grey-text: #5a5a5a;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: var(--light-grey);
+    color: var(--dark-grey);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+header, footer {
+    background-color: var(--lavender);
+    text-align: center;
+    padding: 1rem;
+}
+
+footer {
+    margin-top: auto;
+}
+
+.button-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;    
+    flex-grow: 1;          
+    gap: 1rem;              
+}
+
+.btn {
+    display: inline-block;
+    padding: 12px 24px;
+    background-color: var(--lavender);
+    color: var(--dark-grey);
+    text-decoration: none;
+    font-size: 1rem;
+    font-weight: bold;
+    border: 2px solid var(--dark-grey);
+    border-radius: 8px;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.btn:hover {
+    background-color: var(--dark-grey);
+    color: var(--lavender);
+}
+
+.btn.btn-secondary {
+    background-color: transparent;
+    color: var(--grey-text);
+    border-color: var(--grey-text);
+}
+
+.btn.btn-secondary:hover {
+    background-color: var(--grey-text);
+    color: white;
+}
+
+.form-footer {
+    text-align: center;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--light-grey);
+}
+
+.form-footer a {
+    color: var(--dark-grey);
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.form-footer a:hover {
+    text-decoration: underline;
+}
+/* Container to hold the flashes*/
+.flash-messages-container {
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+/* Base style for a single flash message box. */
+.flash-box {
+    padding: 1rem;
+    border-radius: 8px; 
+    font-weight: bold;
+    border-left: 5px solid; 
+}
+
+/* style for error messages */
+.flash-error {
+    background-color: #f8d7da; 
+    color: #721c24;           
+    border-color: #d9534f;   
+}
+
+/* style for success messages */
+.flash-success {
+    background-color: #d4edda;
+    color: #155724;          
+    border-color: #5cb85c;  
+}
