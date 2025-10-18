@@ -4,17 +4,13 @@ A module implementing form validation for the forms of the website
 
 import re
 from results import ManyResults, Result, merge_many_results
-from dal import Sqlite3DAL
 
 
-def validate_registration(form, db_) -> ManyResults:
+def validate_registration(username: str, password: str, password_2: str) -> ManyResults:
     """
     Validates the user registration form.
     Returns an Error(str) on failure, or True on success.
     """
-    username = form.get("username")
-    password = form.get("password")
-    password_2 = form.get("password_2")
     results = Result.Success()
 
     username_validation = is_valid_username(username)
@@ -22,14 +18,6 @@ def validate_registration(form, db_) -> ManyResults:
 
     password_validation = is_valid_password(password, password_2)
     results = merge_many_results(results, password_validation)
-
-    # Check if the username is already taken
-    user = Sqlite3DAL.find_user_by_username(db_, username)
-    if isinstance(user, Result.Success):
-        results = merge_many_results(
-            results,
-            [Result.Error("That username is already taken. Please choose another.")],
-        )
 
     return results
 
