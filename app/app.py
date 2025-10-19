@@ -9,7 +9,7 @@ from seed_db import seed_db
 
 from results import ManyResults, Result
 from validators import validate_registration
-from dal import Sqlite3DAL
+from dal import DAL
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # Secure session cookie
@@ -48,7 +48,7 @@ def register():
         username = request.form["username"]
         hashed_password = generate_password_hash(request.form["password"])
 
-        Sqlite3DAL.create_user(db_, username, hashed_password)
+        DAL.create_user(db_, username, hashed_password)
 
         return redirect("/login")
     return render_template("register.html")
@@ -65,7 +65,7 @@ def login():
     if request.method == "POST":
         flash("You have to log in first.")
         db_ = get_db()
-        user = Sqlite3DAL.find_user_by_username(db_, request.form["username"])
+        user = DAL.find_user_by_username(db_, request.form["username"])
 
         if not isinstance(user, Result.Success):
             flash("Error, incorrect username or password.", "error")

@@ -8,7 +8,7 @@ from results import Result
 DbConnection = sqlite3.Connection
 
 
-class Sqlite3DAL:
+class DAL:
     """A namespace for all sqlite3 database operations"""
 
     @staticmethod
