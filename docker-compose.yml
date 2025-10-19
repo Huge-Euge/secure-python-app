@@ -3,11 +3,10 @@ services:
   flask:
     build: .
     container_name: secure_notes_flask
+    image: secure-python-app:latest
     ports:
       - 8443:8443
     environment:
       - FLASK_ENV=development
-    volumes:
-      - ./app:/app
     restart: unless-stopped
 
