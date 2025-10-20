@@ -109,6 +109,17 @@ def login():
     return render_template("login.html")
 
 
+@app.route("/logout", methods=["POST"])
+@limiter.limit("5 per 5 minutes")
+def logout():
+    """
+    Defines the /logout endpoint that scrubs the session cookie and redirects to /
+    """
+    session.clear()
+    flash("You have successfully logged out.", "notification")
+    return redirect("/")
+
+
 @app.route("/notes", methods=["GET", "POST"])
 def notes():
     """

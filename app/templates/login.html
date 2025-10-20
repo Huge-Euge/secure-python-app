@@ -14,15 +14,6 @@
 
     <main class="flex-container">
         <form method="post" class="form-container">
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                  {% if messages %}
-                    <div class="flash-messages-container">
-                      {% for category, message in messages %}
-                        <div class="flash-box flash-{{ category }}">{{ message }}</div>
-                      {% endfor %}
-                    </div>
-                  {% endif %}
-                {% endwith %}
 
             <div class="form-group">
                 <label for="username">Username</label>
@@ -42,6 +33,15 @@
             <div class="form-footer">
                 <p>Don't have an account? <a href="{{ url_for('register') }}">Register here</a>.</p>
             </div>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                  {% if messages %}
+                    <div class="flash-messages-container">
+                      {% for category, message in messages %}
+                        <div class="flash-box flash-{{ category }}">{{ message }}</div>
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                {% endwith %}
         </form>
     </main>
 
