@@ -9,6 +9,9 @@ cleanup() {
 # make cleanup function get called on script exit
 trap cleanup ERR INT TERM
 
+# cleanup any running version
+cleanup
+
 echo "--- Building Docker image ---"
 # 'build' uses your Dockerfile and docker-compose.yml to build the image
 sudo docker compose build

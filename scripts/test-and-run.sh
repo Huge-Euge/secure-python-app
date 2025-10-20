@@ -9,6 +9,9 @@ cleanup() {
 # make cleanup function get called on script exit
 trap cleanup ERR INT TERM
 
+# cleanup any running version
+cleanup
+
 echo "--- installing build deps ---"
 pip install -r requirements-dev.txt
 
