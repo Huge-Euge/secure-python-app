@@ -35,3 +35,25 @@ Passwords should be stored securely, hashed and salted
 # Assumptions
 
 We're not being graded on an attractive web site, UX/UI aren't something to focus on
+
+# TODO
+
+1. secure session tokens / auth with JWT
+2. logout functionality
+3. Notes page with editing / deleting
+4. Tests for the endpoints
+
+## Describe Security Measures for
+
+1.
+2.
+3.
+4.
+5. Session fixation
+6. Cross-site scripting
+7. Replay attacks
+8. SQL injection
+9. Replay attacks
+10. HTTPS
+11. Session Timeout
+12. DB backup
