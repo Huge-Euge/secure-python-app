@@ -15,7 +15,7 @@
     <main class="button-container">
             {% if session.user_id %}
                 <a href="{{ url_for('notes') }}" class="btn">View Your Notes</a>
-                <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
+                <btn class="btn btn-secondary">Logout</btn>
             {% else %}
                 <a href="{{ url_for('login') }}" class="btn">Login</a>
                 <a href="{{ url_for('register') }}" class="btn">Register</a>
