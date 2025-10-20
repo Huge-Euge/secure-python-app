@@ -32,7 +32,7 @@ def is_valid_username(username: str) -> Result[None, list[str]]:
     """
     results = Success(None)
 
-    if not re.match(r"^[a-zA-Z0-9_-]{4,30}$", username):
+    if not re.match(r"^[a-zA-Z0-9_-]{5,30}$", username):
         results = Failure(
             [
                 """
