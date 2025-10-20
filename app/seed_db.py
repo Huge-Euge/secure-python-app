@@ -3,10 +3,10 @@ This module just exists to store the seed functions for the database for develop
 """
 
 import json
-from dal import DAL
-from results import Result
-from validators import validate_registration
+from returns.result import Result, Success, Failure
 from werkzeug.security import generate_password_hash
+from validators import validate_registration
+from dal import DAL
 
 
 def seed_db(db_):
@@ -16,6 +16,25 @@ def seed_db(db_):
 
     users = json.load(config)["seed_users"]
 
+    db_.execute(
+        """
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL
+        )
+        """
+    )
+    db_.execute(
+        """
+        CREATE TABLE IF NOT EXISTS notes (
+            id INTEGER PRIMARY KEY,
+            user_id INTEGER,
+            content TEXT NOT NULL
+        )
+        """
+    )
+
     for user in users:
         username = user["username"]
         password = user["password"]
@@ -23,9 +42,11 @@ def seed_db(db_):
 
         validate_result = validate_registration(username, password, password_2)
 
-        if isinstance(validate_result, Result.Error):
+        if isinstance(validate_result, Failure):
             raise ValueError(
-                "Failed to validate config seed inputs: " + validate_result.message
+                # TODO: taking just the first element is stupid
+                "Failed to validate config seed inputs: "
+                + validate_result.failure()[0]
             )
 
         create_user_result = DAL.create_user(
@@ -33,28 +54,28 @@ def seed_db(db_):
         )
 
         if (
-            isinstance(create_user_result, Result.Error)
-            and create_user_result.message != "This username is already taken."
+            isinstance(create_user_result, Failure)
+            and create_user_result.failure() != "This username is already taken."
         ):
             raise ValueError(
-                "Failed to create user during seeding: " + create_user_result.message
+                "Failed to create user during seeding: " + create_user_result.failure()
             )
 
     for user in users:
         username = user["username"]
         existing_user_result = DAL.find_user_by_username(db_, username)
 
-        if not isinstance(existing_user_result, Result.Success):
+        if isinstance(existing_user_result, Failure):
             raise ValueError(
                 "Failed to find user after creation during seeding: "
-                + existing_user_result.message
+                + existing_user_result.failure()
             )
 
-        user_id = existing_user_result.value[0]
+        user_id = existing_user_result.unwrap()[0]
 
         has_notes = DAL.get_notes_for_user(db_, user_id)
 
-        if isinstance(has_notes, Result.Success):
+        if isinstance(has_notes, Success):
             # Don't bother seeding because the user has notes already
             continue
 
@@ -62,7 +83,7 @@ def seed_db(db_):
 
         create_note_result = DAL.create_note_for_user(db_, user_id, content)
 
-        if not isinstance(create_note_result, Result.Success):
+        if isinstance(create_note_result, Failure):
             raise ValueError(
-                "Failed to create note for user: " + create_note_result.message
+                "Failed to create note for user: " + create_note_result.failure()
             )

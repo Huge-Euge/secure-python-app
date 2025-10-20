@@ -1,18 +1,31 @@
-import sqlite3
+from datetime import timedelta
 import os
 import json
 from flask import Flask, render_template, flash, request, redirect, session
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.security import generate_password_hash, check_password_hash
-from seed_db import seed_db
+from returns.result import Result, Success, Failure
 
-from results import ManyResults, Result
 from validators import validate_registration
 from dal import DAL
+from seed_db import seed_db
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # Secure session cookie
+app.config.update(
+    # Limits Cookies to HTTPS traffic only
+    SESSION_COOKIE_SECURE=True,
+    # Prevent Session cookies from being accessed in JS
+    SESSION_COOKIE_HTTPONLY=True,
+    # Prevent sending cookies with all external requests
+    SESSION_COOKIE_SAMESITE="Strict",
+    # Make sessions expire after 1 hour
+    PERMANENT_SESSION_LIFETIME=timedelta(hours=1),
+)
+# TODO: Confirm that I have solved cross-site-scripting
+# TODO: Confirm that I have solved session fixation
+# TODO: Implement Session expiry
 
 limiter = Limiter(
     get_remote_address,
@@ -22,35 +35,42 @@ limiter = Limiter(
 )
 
 
-def get_db():
-    return sqlite3.connect("database.db")
-
-
 @app.route("/register", methods=["GET", "POST"])
 @limiter.limit("10 per hour")
 def register():
     """
     Defines the /register endpoint where users can make accounts
     """
+    # If the user is currently logged in, redirect them from the page.
+    # There should be no case where the user can re-register with an account.
+    if request.cookies.get("auth_token"):
+        return redirect("/")
     if request.method == "POST":
-        db_ = get_db()
+        db_ = DAL.get_db()
         username = request.form["username"]
         password = request.form["password"]
         password_2 = request.form["password_2"]
         validation_result = validate_registration(username, password, password_2)
-        # TODO: bring in the check if there's one already in the DB
-        if not isinstance(validation_result, Result.Success):
-            # NOTE: Should add some error messages to this here
-            # handle rendering more
+        if isinstance(validation_result, Failure):
+            for fail in validation_result.failure():
+                flash(fail, "error")
             return render_template("register.html")
 
-        # The request.form is sent with HTTPS, so the password should be encrypted in transit
-        username = request.form["username"]
+        # The request.form is sent with HTTPS, so the password should be secure in transit
         hashed_password = generate_password_hash(request.form["password"])
 
-        DAL.create_user(db_, username, hashed_password)
+        creation_result = DAL.create_user(db_, username, hashed_password)
+        if isinstance(creation_result, Success):
+            flash("Account successfully registered!", "notification")
+            return redirect("/login")
+        # If creation_result is a failure because there was already a user with that username,
+        # let them know.
+        # If the error was something to do with the db, don't tell end users anything specific
+        if creation_result.failure() == "This username is already taken.":
+            flash(creation_result.failure(), "error")
+        elif creation_result.failure() == "A database error occurred.":
+            flash(creation_result.failure(), "error")
 
-        return redirect("/login")
     return render_template("register.html")
 
 
@@ -62,20 +82,22 @@ def login():
     Note that there should ideally be some forgotten password functionality,
     but I think that's out of scope for this assignment.
     """
+    # Redirect to index if already logged in.
+    if request.cookies.get("auth_token"):
+        return redirect("/")
     if request.method == "POST":
-        flash("You have to log in first.")
-        db_ = get_db()
-        user = DAL.find_user_by_username(db_, request.form["username"])
+        db_ = DAL.get_db()
+        res_user = DAL.find_user_by_username(db_, request.form["username"])
 
-        if not isinstance(user, Result.Success):
+        if isinstance(res_user, Failure):
             flash("Error, incorrect username or password.", "error")
-        elif isinstance(user, Result.Success) and not check_password_hash(
-            user.value[2], request.form["password"]
+        elif isinstance(res_user, Success) and not check_password_hash(
+            res_user.unwrap()[2], request.form["password"]
         ):
             flash("Error, incorrect username or password.", "error")
         else:
-            session["user_id"] = user.value[0]
-            return redirect("/notes")
+            session["user_id"] = res_user.unwrap()[0]
+            return redirect("/")
     return render_template("login.html")
 
 
@@ -88,19 +110,25 @@ def notes():
     # NOTE: all this checks for is an id, which is just an integer, this can be guessed easily
     # NOTE: There is no session timeout here, there should be
     if "user_id" not in session:
-        flash("You have to log in first.")
+        flash("You must log in before viewing notes.")
         return redirect("/login")
-    db_ = get_db()
+    db_ = DAL.get_db()
     if request.method == "POST":
         # NOTE: need to validate this input
         # NOTE: This is not behind any auth, well it checks if user_id is in session,
         # but idk if an attacker could set that manually
         note = request.form["note"]
+
+        # TODO: move this into DAL methods
         db_.execute(
             "INSERT INTO notes (user_id, content) VALUES (?, ?)",
             (session["user_id"], note),
         )
         db_.commit()
+    # TODO: check for URL params - note id
+
+    # if request.method == "GET" and request.args:
+
     user_notes = db_.execute(
         "SELECT content FROM notes WHERE user_id = ?", (session["user_id"],)
     ).fetchall()
@@ -117,25 +145,7 @@ def index():
 
 
 if __name__ == "__main__":
-    with get_db() as db:
-        db.execute(
-            """
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY,
-                username TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL
-            )
-            """
-        )
-        db.execute(
-            """
-            CREATE TABLE IF NOT EXISTS notes (
-                id INTEGER PRIMARY KEY,
-                user_id INTEGER,
-                content TEXT NOT NULL
-            )
-            """
-        )
+    with DAL.get_db() as db:
 
         seed_db(db)
 
