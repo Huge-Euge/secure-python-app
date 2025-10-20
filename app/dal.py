@@ -4,6 +4,7 @@ This module encapsulates all database access functionality
 
 import sqlite3
 from typing import Tuple
+from werkzeug.security import generate_password_hash
 from returns.result import Result, Success, Failure
 
 DbConnection = sqlite3.Connection
@@ -56,12 +57,13 @@ class DAL:
 
     @staticmethod
     def create_user(
-        db_: DbConnection, username: str, hashed_password: str
+        db_: DbConnection, username: str, password: str
     ) -> Result[None, str]:
         """
         Creates a new user in the database.
-        Returns Success(None) or Failure.
+        Returns Success(None) or Failure(str).
         """
+        hashed_password = generate_password_hash(password)
         try:
             db_.execute(
                 "INSERT INTO users (username, password) VALUES (?, ?)",
@@ -78,14 +80,15 @@ class DAL:
 
     @staticmethod
     def update_password(
-        db_: DbConnection, user_id: int, new_hashed_password: str
+        db_: DbConnection, user_id: int, new_password: str
     ) -> Result[None, str]:
         """
         updates a user's password.
-        returns result.success() or result.error with a message.
+        returns Success(None) or Failure(str)
         """
+        hashed_password = generate_password_hash(new_password)
         try:
-            if not new_hashed_password:
+            if not new_password:
                 return Failure("No new password given")
 
             db_.execute(
@@ -95,7 +98,7 @@ class DAL:
                 WHERE id = ?
                 """,
                 (
-                    new_hashed_password,
+                    hashed_password,
                     user_id,
                 ),
             )

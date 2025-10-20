@@ -9,7 +9,7 @@ from returns.result import Result, Success, Failure
 
 from validators import validate_registration
 from dal import DAL
-from seed_db import seed_db
+from seed_db import seed_db, init_db
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # Secure session cookie
@@ -34,6 +34,8 @@ limiter = Limiter(
     storage_uri="memory://",
 )
 
+dummy_password = str(os.urandom(24))
+
 
 @app.route("/register", methods=["GET", "POST"])
 @limiter.limit("10 per hour")
@@ -48,6 +50,7 @@ def register():
     if request.method == "POST":
         db_ = DAL.get_db()
         username = request.form["username"]
+        # The request.form is sent with HTTPS, so the password should be secure in transit
         password = request.form["password"]
         password_2 = request.form["password_2"]
         validation_result = validate_registration(username, password, password_2)
@@ -56,10 +59,7 @@ def register():
                 flash(fail, "error")
             return render_template("register.html")
 
-        # The request.form is sent with HTTPS, so the password should be secure in transit
-        hashed_password = generate_password_hash(request.form["password"])
-
-        creation_result = DAL.create_user(db_, username, hashed_password)
+        creation_result = DAL.create_user(db_, username, password)
         if isinstance(creation_result, Success):
             flash("Account successfully registered!", "notification")
             return redirect("/login")
@@ -86,13 +86,21 @@ def login():
     if request.cookies.get("auth_token"):
         return redirect("/")
     if request.method == "POST":
+
         db_ = DAL.get_db()
         res_user = DAL.find_user_by_username(db_, request.form["username"])
+
+        # Create a dummy hash for non-existant users to protect against
+        # user enumeration attacks
+        dummy_hash = generate_password_hash(dummy_password)
+        user_hash = (
+            res_user.unwrap()[2] if isinstance(res_user, Success) else dummy_hash
+        )
 
         if isinstance(res_user, Failure):
             flash("Error, incorrect username or password.", "error")
         elif isinstance(res_user, Success) and not check_password_hash(
-            res_user.unwrap()[2], request.form["password"]
+            user_hash, request.form["password"]
         ):
             flash("Error, incorrect username or password.", "error")
         else:
@@ -145,15 +153,17 @@ def index():
 
 
 if __name__ == "__main__":
-    with DAL.get_db() as db:
-
-        seed_db(db)
-
     with open("config.json", "r", encoding="utf-8") as f:
         config = json.load(f)
     host = config["server"]["host"]
     port = config["server"]["port"]
     debug = config["debug_bool"]
 
-    # NOTE: change debug to false in final version
+    with DAL.get_db() as db:
+
+        init_db(db)
+        # Only seed db values if the app is running in debug mode
+        if debug:
+            seed_db(db)
+
     app.run(host=host, port=port, debug=debug, ssl_context=("cert.pem", "key.pem"))

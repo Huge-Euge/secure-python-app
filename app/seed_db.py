@@ -4,18 +4,12 @@ This module just exists to store the seed functions for the database for develop
 
 import json
 from returns.result import Result, Success, Failure
-from werkzeug.security import generate_password_hash
 from validators import validate_registration
 from dal import DAL
 
 
-def seed_db(db_):
-    """Seeds the database with 5 default users using the DAL, and the config file."""
-
-    config = open("config.json", "r", encoding="utf-8")
-
-    users = json.load(config)["seed_users"]
-
+def init_db(db_):
+    """Initializes the db tables"""
     db_.execute(
         """
         CREATE TABLE IF NOT EXISTS users (
@@ -35,6 +29,14 @@ def seed_db(db_):
         """
     )
 
+
+def seed_db(db_):
+    """Seeds the database with 5 default users using the DAL, and the config file."""
+
+    config = open("config.json", "r", encoding="utf-8")
+
+    users = json.load(config)["seed_users"]
+
     for user in users:
         username = user["username"]
         password = user["password"]
@@ -49,9 +51,7 @@ def seed_db(db_):
                 + validate_result.failure()[0]
             )
 
-        create_user_result = DAL.create_user(
-            db_, username, generate_password_hash(password)
-        )
+        create_user_result = DAL.create_user(db_, username, password)
 
         if (
             isinstance(create_user_result, Failure)
