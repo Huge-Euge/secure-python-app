@@ -1,54 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register Account</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-</head>
-<body>
-
-    <header>
-        <h1>Create Your Account</h1>
-    </header>
-
-    <main class="flex-container">
-        <form method="post" class="form-container">
-
-            <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" name="username" class="form-input" required minlength="5" maxlength="30">
-            </div>
-
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" class="form-input" required minlength="8">
-            </div>
-
-            <div class="form-group">
-                <label for="password_2">Reenter Password</label>
-                <input type="password" id="password_2" name="password_2" class="form-input" required minlength="8">
-            </div>
-
-            <div class="form-actions">
-                <button type="submit" class="btn">Register</button>
-                <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
-            </div>
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                  {% if messages %}
-                    <div class="flash-messages-container">
-                      {% for category, message in messages %}
-                        <div class="flash-box flash-{{ category }}">{{ message }}</div>
-                      {% endfor %}
-                    </div>
-                  {% endif %}
-            {% endwith %}
-        </form>
-    </main>
-
-    <footer>
-    	<p>&copy;2025 Eugene Jensen</p>
-    </footer>
-
-</body>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Register Account</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static', filename='styles.css') }}">
+    </head>
+    <body>
+        <header>
+            <h1>Create Your Account</h1>
+        </header>
+        <main class="flex-container">
+            <form method="post" class="form-container">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text"
+                           id="username"
+                           name="username"
+                           class="form-input"
+                           required
+                           minlength="5"
+                           maxlength="30">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password"
+                           id="password"
+                           name="password"
+                           class="form-input"
+                           required
+                           minlength="8">
+                </div>
+                <div class="form-group">
+                    <label for="password_2">Reenter Password</label>
+                    <input type="password"
+                           id="password_2"
+                           name="password_2"
+                           class="form-input"
+                           required
+                           minlength="8">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn">Register</button>
+                    <a href="{{ url_for("index") }}" class="btn btn-secondary">Cancel</a>
+                </div>
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="flash-messages-container">
+                            {% for category, message in messages %}<div class="flash-box flash-{{ category }}">{{ message }}</div>{% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+            </form>
+        </main>
+        <footer>
+            <p>&copy;2025 Eugene Jensen</p>
+        </footer>
+    </body>
 </html>
