@@ -65,18 +65,21 @@ def is_valid_password(password: str, password_2: str) -> Result[None, list[str]]
     return results
 
 
-def validate_note(form) -> Result[None, list[str]]:
+def validate_note(content: str) -> Result[None, str]:
     """
     Validates an attempt to POST a note.
-    Returns an Failure([str]), or Success(None)
+    Returns an Failure(str), or Success(None)
     """
 
-    content: str = form.get("note_content")
+    content = content.strip()
 
     results = Success(None)
 
     # The user has to input some text content
-    if not content.strip():
-        results = merge_results(results, Failure(["Note content cannot be empty."]))
+    if not content:
+        results = Failure("Note content cannot be empty.")
+
+    if len(content) > 5096:
+        results = Failure("Note cannot be longer than 5096 characters.")
 
     return results
