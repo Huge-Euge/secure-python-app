@@ -15,6 +15,9 @@ class DAL:
 
     @staticmethod
     def get_db() -> DbConnection:
+        """
+        Helper method to get the sqlite3 db connection.
+        """
         return sqlite3.connect("database.db")
 
     @staticmethod
@@ -109,16 +112,24 @@ class DAL:
             return Failure("could not update note due to a database error.")
 
     @staticmethod
-    def get_note_by_id(db_: DbConnection, note_id: int) -> Result[Tuple, str]:
+    def get_note_by_id(
+        db_: DbConnection, note_id: int, user_id: int
+    ) -> Result[Tuple, str]:
         """
         Retrieves a note by id
         Returns Success(note) or Failure.
         """
         try:
             note = db_.execute(
-                "SELECT content FROM notes WHERE id = ?", (note_id,)
+                "SELECT id, content FROM notes WHERE id = ? AND user_id = ?",
+                (note_id, user_id),
             ).fetchone()
-            return Success(note)
+
+            if note:
+                return Success(note)
+            return Failure(
+                "No note was found with the given id, created by the given user"
+            )
         except sqlite3.Error as e:
             print(f"Database error in get_note_by_id: {e}")
             return Failure("Could not retrieve note due to a database error.")
@@ -131,8 +142,10 @@ class DAL:
         """
         try:
             notes = db_.execute(
-                "SELECT content FROM notes WHERE user_id = ?", (user_id,)
+                "SELECT id, content FROM notes WHERE user_id = ?", (user_id,)
             ).fetchall()
+            # If this returns an empty list, that's fine.
+            # Some users will have no notes when they open the /notes page
             return Success(notes)
         except sqlite3.Error as e:
             print(f"Database error in get_notes_for_user: {e}")
@@ -190,21 +203,21 @@ class DAL:
             return Failure("Could not update note due to a database error.")
 
     @staticmethod
-    def delete_note(db_: DbConnection, note_id: int) -> Result[None, str]:
+    def delete_note(db_: DbConnection, note_id: int, user_id: str) -> Result[None, str]:
         """
         Delete a note by id
         Returns Success() or Failure.
         """
         try:
             cursor = db_.execute(
-                "DELETE FROM notes WHERE id = ?",
-                (note_id,),
+                "DELETE FROM notes WHERE id = ? AND user_id = ?",
+                (note_id, user_id),
             )
             db_.commit()
 
             if cursor.rowcount == 0:
                 # No note was found with that id
-                return Failure("No note found with that id")
+                return Failure("You do not have a note with the given id.")
             return Success(None)
         except sqlite3.Error as e:
             print(f"Database error in delete_note: {e}")
