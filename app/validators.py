@@ -22,6 +22,11 @@ def validate_registration(
     password_validation = is_valid_password(password, password_2)
     results = merge_results(results, password_validation)
 
+    if username == password:
+        results = merge_results(
+            results, Failure(["Username and password cannot be the same."])
+        )
+
     return results
 
 
