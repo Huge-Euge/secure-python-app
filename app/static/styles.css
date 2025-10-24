@@ -82,10 +82,6 @@ footer {
     text-decoration: none;
 }
 
-.form-footer a:hover {
-    text-decoration: underline;
-}
-
 /* Styles for flash messages */
 .flash-messages-container {
     margin-bottom: 1.5rem;
