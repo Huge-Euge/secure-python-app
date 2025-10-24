@@ -1,11 +1,12 @@
 """
-The root of the secure-notes-app
+The root of the secure-notes-app. Manages the web application's lifecycle.
 """
 
 from datetime import timedelta
 import os
 import json
-from flask import Flask, render_template, flash, request, redirect, session, url_for
+import sqlite3
+from flask import Flask, render_template, flash, request, redirect, session, url_for, g
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -14,6 +15,8 @@ from returns.result import Success, Failure
 from validators import validate_registration, validate_note
 from dal import DAL
 from seed_db import seed_db, init_db
+
+DbConnection = sqlite3.Connection
 
 app = Flask(__name__)
 # TOEX fully explain this
@@ -43,27 +46,52 @@ limiter = Limiter(
 DUMMY_HASH = generate_password_hash(str(os.urandom(24)))
 
 
+def get_db() -> DbConnection:
+    """
+    Gets the database connection for the current request, if it exists.
+    If not, it creates it.
+    """
+    if "db" not in g:
+        g.db = sqlite3.connect("database.db")
+    return g.db
+
+
+@app.teardown_appcontext
+def close_db(e=None):
+    """
+    Automatically closes the database connection at the end of any request.
+    """
+    db = g.pop("db", None)
+    if db is not None:
+        db.close()
+
+
 @app.route("/register", methods=["GET", "POST"])
 def register():
     """
     Defines the /register endpoint where users can make accounts
     """
     # If the user is currently logged in, redirect them from the page.
-    # There should be no case where the user can re-register with an account.
+    # There should be no case where the user can re-register an active account.
     if "user_id" in session:
         return redirect(url_for("index"))
     if request.method == "POST":
-        db_ = DAL.get_db()
+        db_ = get_db()
         username = request.form["username"]
         # The request.form is sent over HTTPS, so the password is secure in transit
         password = request.form["password"]
         password_2 = request.form["password_2"]
 
+        print(username)
+        print(password)
+        print(password_2)
+
         validation_result = validate_registration(username, password, password_2)
         if isinstance(validation_result, Failure):
             for fail in validation_result.failure():
+                print(fail)
                 flash(fail, "error")
-            return render_template("register.html")
+            return redirect(url_for("register"))
 
         creation_result = DAL.create_user(db_, username, password)
         if isinstance(creation_result, Success):
@@ -76,6 +104,8 @@ def register():
             flash(creation_result.failure(), "error")
         elif creation_result.failure() == "A database error occurred.":
             flash(creation_result.failure(), "error")
+        print("Failure: " + creation_result.failure())
+        return redirect(url_for("register"))
 
     return render_template("register.html")
 
@@ -93,7 +123,7 @@ def login():
         return redirect(url_for("index"))
     if request.method == "POST":
 
-        db_ = DAL.get_db()
+        db_ = get_db()
         res_user = DAL.find_user_by_username(db_, request.form["username"])
 
         # Use a dummy hash for non-existant users to protect against
@@ -136,7 +166,7 @@ def notes():
         return redirect(url_for("login"))
     user_id = session["user_id"]
 
-    db_ = DAL.get_db()
+    db_ = get_db()
 
     res_user_notes = DAL.get_notes_for_user(db_, user_id)
     # This doesn't appear when the user simply has no notes yet, only on db errors
@@ -167,7 +197,7 @@ def new_note():
             flash(res_val_note.failure(), "error")
             return redirect(url_for("new_note"))
 
-        db_ = DAL.get_db()
+        db_ = get_db()
         res_create_note = DAL.create_note_for_user(db_, user_id, content)
         if isinstance(res_create_note, Failure):
             flash(res_create_note.failure(), "error")
@@ -192,7 +222,7 @@ def edit_note(note_id: int):
         return redirect(url_for("login"))
     user_id = session["user_id"]
 
-    db_ = DAL.get_db()
+    db_ = get_db()
 
     if request.method == "POST":
         # Logic for updating or creating a note
@@ -231,7 +261,7 @@ def delete_note(note_id: int):
         return redirect(url_for("login"))
     user_id = session["user_id"]
 
-    db_ = DAL.get_db()
+    db_ = get_db()
 
     res_delete_note = DAL.delete_note(db_, note_id, user_id)
     if isinstance(res_delete_note, Failure):
@@ -255,10 +285,11 @@ if __name__ == "__main__":
     port = config["server"]["port"]
     debug = config["debug_bool"]
 
-    with DAL.get_db() as db:
-        init_db(db)
-        # Only seed db values if the app is running in debug mode
-        if debug:
-            seed_db(db)
+    with app.app_context():
+        with get_db() as db:
+            init_db(db)
+            # Only seed db values if the app is running in debug mode
+            if debug:
+                seed_db(db)
 
     app.run(host=host, port=port, debug=debug, ssl_context=("cert.pem", "key.pem"))

@@ -14,13 +14,6 @@ class DAL:
     """A namespace for all sqlite3 database operations"""
 
     @staticmethod
-    def get_db() -> DbConnection:
-        """
-        Helper method to get the sqlite3 db connection.
-        """
-        return sqlite3.connect("database.db")
-
-    @staticmethod
     def find_user_by_id(db_: DbConnection, user_id: int) -> Result[Tuple, str]:
         """
         Finds a user by user_id in the database.
