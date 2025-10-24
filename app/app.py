@@ -51,7 +51,7 @@ def register():
     # If the user is currently logged in, redirect them from the page.
     # There should be no case where the user can re-register with an account.
     if "user_id" in session:
-        return redirect("/")
+        return redirect(url_for("index"))
     if request.method == "POST":
         db_ = DAL.get_db()
         username = request.form["username"]
@@ -68,7 +68,7 @@ def register():
         creation_result = DAL.create_user(db_, username, password)
         if isinstance(creation_result, Success):
             flash("Account successfully registered!", "notification")
-            return redirect("/login")
+            return redirect(url_for("login"))
         # If creation_result is a failure because there was already a user with that username,
         # let them know.
         # If the error was something to do with the db, don't tell end users anything specific
@@ -90,7 +90,7 @@ def login():
 
     # Redirect to index if already logged in.
     if "user_id" in session:
-        return redirect("/")
+        return redirect(url_for("index"))
     if request.method == "POST":
 
         db_ = DAL.get_db()
@@ -109,7 +109,7 @@ def login():
             flash("Error, incorrect username or password.", "error")
         else:
             session["user_id"] = res_user.unwrap()[0]
-            return redirect("/")
+            return redirect(url_for("index"))
     # Handle GET requests
     return render_template("login.html")
 
@@ -121,7 +121,7 @@ def logout():
     """
     session.clear()
     flash("You have successfully logged out.", "notification")
-    return redirect("/")
+    return redirect(url_for("index"))
 
 
 @app.route("/notes", methods=["GET"])
@@ -133,7 +133,7 @@ def notes():
     # If the user is not logged in, they can't view this page
     if "user_id" not in session:
         flash("You must be logged in to view notes.", "error")
-        return redirect("/login")
+        return redirect(url_for("login"))
     user_id = session["user_id"]
 
     db_ = DAL.get_db()
@@ -142,7 +142,7 @@ def notes():
     # This doesn't appear when the user simply has no notes yet, only on db errors
     if isinstance(res_user_notes, Failure):
         flash(res_user_notes.failure(), "error")
-        redirect("/")
+        return redirect(url_for("index"))
 
     return render_template("notes.html", notes=res_user_notes.unwrap())
 
@@ -156,7 +156,7 @@ def new_note():
 
     if "user_id" not in session:
         flash("You must be logged in to create a note.", "error")
-        return redirect("/login")
+        return redirect(url_for("login"))
     user_id = session["user_id"]
 
     if request.method == "POST":
@@ -165,13 +165,13 @@ def new_note():
         res_val_note = validate_note(content)
         if isinstance(res_val_note, Failure):
             flash(res_val_note.failure(), "error")
-            return redirect("/notes/new")
+            return redirect(url_for("new_note"))
 
         db_ = DAL.get_db()
         res_create_note = DAL.create_note_for_user(db_, user_id, content)
         if isinstance(res_create_note, Failure):
             flash(res_create_note.failure(), "error")
-            return redirect("/notes/new")
+            return redirect(url_for("new_note"))
         flash("Note successfully edited.", "notification")
 
         return redirect(url_for("notes"))
@@ -189,7 +189,7 @@ def edit_note(note_id: int):
 
     if "user_id" not in session:
         flash("You must be logged in to edit a note.", "error")
-        return redirect("/login")
+        return redirect(url_for("login"))
     user_id = session["user_id"]
 
     db_ = DAL.get_db()
@@ -228,7 +228,7 @@ def delete_note(note_id: int):
     """
     if "user_id" not in session:
         flash("You must be logged in to delete a note.", "error")
-        return redirect("/login")
+        return redirect(url_for("login"))
     user_id = session["user_id"]
 
     db_ = DAL.get_db()
