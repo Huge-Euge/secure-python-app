@@ -3,7 +3,7 @@ This module just exists to store the seed functions for the database for develop
 """
 
 import json
-from returns.result import Result, Success, Failure
+from returns.result import Failure
 from validators import validate_registration
 from dal import DAL
 
@@ -33,23 +33,23 @@ def init_db(db_):
 def seed_db(db_):
     """Seeds the database with 5 default users using the DAL, and the config file."""
 
-    config = open("config.json", "r", encoding="utf-8")
+    with open("config.json", "r", encoding="utf-8") as f:
+        config = json.load(f)
 
-    users = json.load(config)["seed_users"]
+    users = config["seed_users"]
 
     for user in users:
         username = user["username"]
         password = user["password"]
-        password_2 = password
 
-        validate_result = validate_registration(username, password, password_2)
+        validate_result = validate_registration(username, password, password)
 
         if isinstance(validate_result, Failure):
-            raise ValueError(
-                # TODO: taking just the first element is stupid
-                "Failed to validate config seed inputs: "
-                + validate_result.failure()[0]
-            )
+            error_str: str = "Failed to validate config seed inputs:"
+
+            for fail in validate_result.failure():
+                error_str += "\n" + fail
+            raise ValueError(error_str)
 
         create_user_result = DAL.create_user(db_, username, password)
 
@@ -75,8 +75,14 @@ def seed_db(db_):
 
         has_notes = DAL.get_notes_for_user(db_, user_id)
 
-        if isinstance(has_notes, Success):
-            # Don't bother seeding because the user has notes already
+        if isinstance(has_notes, Failure):
+            raise ValueError(
+                "Failed to check whether user had notes during seeding: "
+                + has_notes.failure()
+            )
+
+        if len(has_notes.unwrap()) >= 1:
+            # Don't add any notes if the seed users already have some.
             continue
 
         content = f"This is a note for {username}."

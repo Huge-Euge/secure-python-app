@@ -1,18 +1,24 @@
+"""
+The root of the secure-notes-app
+"""
+
 from datetime import timedelta
 import os
 import json
-from flask import Flask, render_template, flash, request, redirect, session
+from flask import Flask, render_template, flash, request, redirect, session, url_for
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.security import generate_password_hash, check_password_hash
-from returns.result import Result, Success, Failure
+from returns.result import Success, Failure
 
-from validators import validate_registration
+from validators import validate_registration, validate_note
 from dal import DAL
 from seed_db import seed_db, init_db
 
 app = Flask(__name__)
+# TOEX fully explain this
 app.secret_key = os.urandom(24)  # Secure session cookie
+# TOEX fully explain this
 app.config.update(
     # Limits Cookies to HTTPS traffic only
     SESSION_COOKIE_SECURE=True,
@@ -23,36 +29,36 @@ app.config.update(
     # Make sessions expire after 1 hour
     PERMANENT_SESSION_LIFETIME=timedelta(hours=1),
 )
-# TODO: Confirm that I have solved cross-site-scripting
-# TODO: Confirm that I have solved session fixation
-# TODO: Implement Session expiry
 
+# TOEX: explain this in the document
 limiter = Limiter(
     get_remote_address,
     app=app,
-    default_limits=["200 per day", "50 per hour"],
+    default_limits=["500 per day", "100 per hour"],
+    # TOEX: what is this?
     storage_uri="memory://",
 )
 
-dummy_password = str(os.urandom(24))
+# TOEX: explain this in the document
+DUMMY_HASH = generate_password_hash(str(os.urandom(24)))
 
 
 @app.route("/register", methods=["GET", "POST"])
-@limiter.limit("10 per hour")
 def register():
     """
     Defines the /register endpoint where users can make accounts
     """
     # If the user is currently logged in, redirect them from the page.
     # There should be no case where the user can re-register with an account.
-    if request.cookies.get("auth_token"):
+    if "user_id" in session:
         return redirect("/")
     if request.method == "POST":
         db_ = DAL.get_db()
         username = request.form["username"]
-        # The request.form is sent with HTTPS, so the password should be secure in transit
+        # The request.form is sent over HTTPS, so the password is secure in transit
         password = request.form["password"]
         password_2 = request.form["password_2"]
+
         validation_result = validate_registration(username, password, password_2)
         if isinstance(validation_result, Failure):
             for fail in validation_result.failure():
@@ -75,42 +81,42 @@ def register():
 
 
 @app.route("/login", methods=["GET", "POST"])
-@limiter.limit("5 per 5 minutes")
 def login():
     """
     Defines the /login endpoint where users can log in and get session tokens
     Note that there should ideally be some forgotten password functionality,
     but I think that's out of scope for this assignment.
     """
+    # NOTE: in a full-scale app we should have something like password recovery, but
+    # I'm not going to implement that for this assignment.
+
     # Redirect to index if already logged in.
-    if request.cookies.get("auth_token"):
+    if "user_id" in session:
         return redirect("/")
     if request.method == "POST":
 
         db_ = DAL.get_db()
         res_user = DAL.find_user_by_username(db_, request.form["username"])
 
-        # Create a dummy hash for non-existant users to protect against
-        # user enumeration attacks
-        dummy_hash = generate_password_hash(dummy_password)
+        # Use a dummy hash for non-existant users to protect against
+        # user enumeration attacks, this makes the process take the same
+        # amount of time
+        # Does it? Now that I am unwrapping and accessing the tuple of res_user
+        # I think the if/else here takes different amounts of time
         user_hash = (
-            res_user.unwrap()[2] if isinstance(res_user, Success) else dummy_hash
+            res_user.unwrap()[2] if isinstance(res_user, Success) else DUMMY_HASH
         )
 
-        if isinstance(res_user, Failure):
-            flash("Error, incorrect username or password.", "error")
-        elif isinstance(res_user, Success) and not check_password_hash(
-            user_hash, request.form["password"]
-        ):
+        if not check_password_hash(user_hash, request.form["password"]):
             flash("Error, incorrect username or password.", "error")
         else:
             session["user_id"] = res_user.unwrap()[0]
             return redirect("/")
+    # Handle GET requests
     return render_template("login.html")
 
 
 @app.route("/logout", methods=["POST"])
-@limiter.limit("5 per 5 minutes")
 def logout():
     """
     Defines the /logout endpoint that scrubs the session cookie and redirects to /
@@ -120,42 +126,121 @@ def logout():
     return redirect("/")
 
 
-@app.route("/notes", methods=["GET", "POST"])
+@app.route("/notes", methods=["GET"])
 def notes():
     """
-    Defines the /notes endpoint where users can view a collection of all of
-    their notes or find a note with a specific id
+    Defines the /notes endpoint where users can GET a collection of all of
+    their notes.
     """
-    # NOTE: all this checks for is an id, which is just an integer, this can be guessed easily
-    # NOTE: There is no session timeout here, there should be
+    # If the user is not logged in, they can't view this page
     if "user_id" not in session:
-        flash("You must log in before viewing notes.")
+        flash("You must be logged in to view notes.", "error")
         return redirect("/login")
+    user_id = session["user_id"]
+
     db_ = DAL.get_db()
+
+    res_user_notes = DAL.get_notes_for_user(db_, user_id)
+    # This doesn't appear when the user simply has no notes yet, only on db errors
+    if isinstance(res_user_notes, Failure):
+        flash(res_user_notes.failure(), "error")
+        redirect("/")
+
+    return render_template("notes.html", notes=res_user_notes.unwrap())
+
+
+@app.route("/notes/new", methods=["GET", "POST"])
+def new_note():
+    """
+    Defines the /notes/new endpoint where users can GET the page to create a new note
+    or POST the note they just created.
+    """
+
+    if "user_id" not in session:
+        flash("You must be logged in to create a note.", "error")
+        return redirect("/login")
+    user_id = session["user_id"]
+
     if request.method == "POST":
-        # NOTE: need to validate this input
-        # NOTE: This is not behind any auth, well it checks if user_id is in session,
-        # but idk if an attacker could set that manually
-        note = request.form["note"]
+        content = request.form["note_content"]
 
-        # TODO: move this into DAL methods
-        db_.execute(
-            "INSERT INTO notes (user_id, content) VALUES (?, ?)",
-            (session["user_id"], note),
-        )
-        db_.commit()
-    # TODO: check for URL params - note id
+        res_val_note = validate_note(content)
+        if isinstance(res_val_note, Failure):
+            flash(res_val_note.failure(), "error")
+            return redirect("/notes/new")
 
-    # if request.method == "GET" and request.args:
+        db_ = DAL.get_db()
+        res_create_user = DAL.create_note_for_user(db_, user_id, content)
+        if isinstance(res_create_user, Failure):
+            flash(res_val_note.failure(), "error")
+            return redirect("/notes/new")
 
-    user_notes = db_.execute(
-        "SELECT content FROM notes WHERE user_id = ?", (session["user_id"],)
-    ).fetchall()
-    return render_template("notes.html", notes=user_notes)
+        return redirect(url_for("notes"))
+
+    return render_template("single-note.html")
+
+
+@app.route("/notes/edit/<int:note_id>", methods=["GET", "POST"])
+def edit_note(note_id: int):
+    """
+    Defines the endpoint where users can GET an existing note to read and edit it,
+    or POST the note they've just edited.
+    """
+
+    if "user_id" not in session:
+        flash("You must be logged in to edit a note.", "error")
+        return redirect("/login")
+    user_id = session["user_id"]
+
+    db_ = DAL.get_db()
+
+    if request.method == "POST":
+        # Logic for updating or creating a note
+        content = request.form["note_content"].strip()
+
+        # Validate it here
+        res_val_note = validate_note(content)
+        if isinstance(res_val_note, Failure):
+            flash(res_val_note.failure(), "error")
+            redirect(url_for("edit_note", note_id=note_id))
+
+        # DB access
+        res_edit_note = DAL.edit_note(db_, note_id, content)
+        if isinstance(res_edit_note, Failure):
+            flash(res_edit_note.failure(), "error")
+            redirect(url_for("edit_note", note_id=note_id))
+        flash("Note successfully edited.", "notification")
+        redirect(url_for("notes"))
+
+    # Handle GET
+    res_get_note = DAL.get_note_by_id(db_, note_id, user_id)
+    if isinstance(res_get_note, Failure):
+        flash(res_get_note.failure(), "error")
+        redirect(url_for("notes"))
+
+    return render_template("single-note.html", note=res_get_note.unwrap())
+
+
+@app.route("/notes/delete/<int:note_id>", methods=["POST"])
+def delete_note(note_id: int):
+    """
+    Defines the endpoint for deleting the note with the given note_id on POST
+    """
+    if "user_id" not in session:
+        flash("You must be logged in to delete a note.", "error")
+        return redirect("/login")
+    user_id = session["user_id"]
+
+    db_ = DAL.get_db()
+
+    res_delete_note = DAL.delete_note(db_, note_id, user_id)
+    if isinstance(res_delete_note, Failure):
+        flash(res_delete_note.failure(), "error")
+
+    return redirect(url_for("notes"))
 
 
 @app.route("/", methods=["GET"])
-@limiter.limit("5 per 2 minutes")
 def index():
     """
     Defines the index page for the website
@@ -171,7 +256,6 @@ if __name__ == "__main__":
     debug = config["debug_bool"]
 
     with DAL.get_db() as db:
-
         init_db(db)
         # Only seed db values if the app is running in debug mode
         if debug:
