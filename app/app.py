@@ -87,8 +87,6 @@ def login():
     Note that there should ideally be some forgotten password functionality,
     but I think that's out of scope for this assignment.
     """
-    # NOTE: in a full-scale app we should have something like password recovery, but
-    # I'm not going to implement that for this assignment.
 
     # Redirect to index if already logged in.
     if "user_id" in session:
@@ -170,13 +168,15 @@ def new_note():
             return redirect("/notes/new")
 
         db_ = DAL.get_db()
-        res_create_user = DAL.create_note_for_user(db_, user_id, content)
-        if isinstance(res_create_user, Failure):
-            flash(res_val_note.failure(), "error")
+        res_create_note = DAL.create_note_for_user(db_, user_id, content)
+        if isinstance(res_create_note, Failure):
+            flash(res_create_note.failure(), "error")
             return redirect("/notes/new")
+        flash("Note successfully edited.", "notification")
 
         return redirect(url_for("notes"))
 
+    # Handle GETs
     return render_template("single-note.html")
 
 
@@ -210,7 +210,7 @@ def edit_note(note_id: int):
             flash(res_edit_note.failure(), "error")
             redirect(url_for("edit_note", note_id=note_id))
         flash("Note successfully edited.", "notification")
-        redirect(url_for("notes"))
+        return redirect(url_for("notes"))
 
     # Handle GET
     res_get_note = DAL.get_note_by_id(db_, note_id, user_id)
