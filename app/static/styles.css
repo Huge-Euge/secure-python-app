@@ -47,6 +47,12 @@ footer {
     transition: background-color 0.3s, color 0.3s;
 }
 
+.btn-small {
+    padding: 6px 12px;
+    font-size: 0.9rem;
+    border-radius: 6px;
+}
+
 .btn:hover {
     background-color: var(--dark-grey);
     color: var(--lavender);
@@ -105,4 +111,33 @@ footer {
     background-color: #d4edda;
     color: #155724;
     border-color: #5cb85c;
+}
+
+/* styles for the notes list */
+.notes-list {
+    width: 100%;
+    margin-top: 1rem;
+}
+
+.note-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border: 1px solid var(--lavender);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    gap: 1rem;
+}
+
+.note-content {
+    flex-grow: 1;
+    margin: 0;
+    white-space: pre-wrap;
+}
+
+.note-actions {
+    display: flex;
+    flex-shrink: 0;
+    gap: 0.5rem;
 }
