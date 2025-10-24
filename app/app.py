@@ -75,16 +75,13 @@ def register():
     # There should be no case where the user can re-register an active account.
     if "user_id" in session:
         return redirect(url_for("index"))
+
     if request.method == "POST":
         db_ = get_db()
+        # The request.form is sent over HTTPS, so the user's info is secure in transit
         username = request.form["username"]
-        # The request.form is sent over HTTPS, so the password is secure in transit
         password = request.form["password"]
         password_2 = request.form["password_2"]
-
-        print(username)
-        print(password)
-        print(password_2)
 
         validation_result = validate_registration(username, password, password_2)
         if isinstance(validation_result, Failure):
@@ -104,9 +101,9 @@ def register():
             flash(creation_result.failure(), "error")
         elif creation_result.failure() == "A database error occurred.":
             flash(creation_result.failure(), "error")
-        print("Failure: " + creation_result.failure())
         return redirect(url_for("register"))
 
+    # Handle GETs
     return render_template("register.html")
 
 
@@ -115,31 +112,33 @@ def login():
     """
     Defines the /login endpoint where users can log in and get session tokens
     Note that there should ideally be some forgotten password functionality,
-    but I think that's out of scope for this assignment.
+    but I think that's out of scope for this assignment. I did implement a DAL function
+    to handle password updating as a proof of concept though.
     """
 
     # Redirect to index if already logged in.
     if "user_id" in session:
         return redirect(url_for("index"))
-    if request.method == "POST":
 
+    if request.method == "POST":
         db_ = get_db()
         res_user = DAL.find_user_by_username(db_, request.form["username"])
 
-        # Use a dummy hash for non-existant users to protect against
+        # Use a dummy hash for the passwords of non-existant users to protect against
         # user enumeration attacks, this makes the process take the same
-        # amount of time
-        # Does it? Now that I am unwrapping and accessing the tuple of res_user
-        # I think the if/else here takes different amounts of time
+        # amount of time whether the error was in entering the username or password.
         user_hash = (
             res_user.unwrap()[2] if isinstance(res_user, Success) else DUMMY_HASH
         )
 
         if not check_password_hash(user_hash, request.form["password"]):
             flash("Error, incorrect username or password.", "error")
-        else:
-            session["user_id"] = res_user.unwrap()[0]
-            return redirect(url_for("index"))
+            return redirect(url_for("login"))
+        # else:
+        session["user_id"] = res_user.unwrap()[0]
+        flash("Login successful.", "notification")
+        return redirect(url_for("index"))
+
     # Handle GET requests
     return render_template("login.html")
 
@@ -232,13 +231,13 @@ def edit_note(note_id: int):
         res_val_note = validate_note(content)
         if isinstance(res_val_note, Failure):
             flash(res_val_note.failure(), "error")
-            redirect(url_for("edit_note", note_id=note_id))
+            return redirect(url_for("edit_note", note_id=note_id))
 
         # DB access
-        res_edit_note = DAL.edit_note(db_, note_id, content)
+        res_edit_note = DAL.edit_note(db_, note_id, user_id, content)
         if isinstance(res_edit_note, Failure):
             flash(res_edit_note.failure(), "error")
-            redirect(url_for("edit_note", note_id=note_id))
+            return redirect(url_for("edit_note", note_id=note_id))
         flash("Note successfully edited.", "notification")
         return redirect(url_for("notes"))
 
@@ -246,7 +245,7 @@ def edit_note(note_id: int):
     res_get_note = DAL.get_note_by_id(db_, note_id, user_id)
     if isinstance(res_get_note, Failure):
         flash(res_get_note.failure(), "error")
-        redirect(url_for("notes"))
+        return redirect(url_for("notes"))
 
     return render_template("single-note.html", note=res_get_note.unwrap())
 
@@ -286,10 +285,10 @@ if __name__ == "__main__":
     debug = config["debug_bool"]
 
     with app.app_context():
-        with get_db() as db:
-            init_db(db)
-            # Only seed db values if the app is running in debug mode
-            if debug:
-                seed_db(db)
+        db = get_db()
+        init_db(db)
+        # Only seed db values if the app is running in debug mode
+        if debug:
+            seed_db(db)
 
     app.run(host=host, port=port, debug=debug, ssl_context=("cert.pem", "key.pem"))

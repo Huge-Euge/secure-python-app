@@ -4,7 +4,7 @@ This module encapsulates all database access functionality
 
 import sqlite3
 from typing import Tuple
-from werkzeug.security import generate_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 from returns.result import Result, Success, Failure
 
 DbConnection = sqlite3.Connection
@@ -28,7 +28,6 @@ class DAL:
                 return Success(user)
             return Failure("User not found.")
         except sqlite3.Error as e:
-            # database errors (e.g., table not found)
             print(f"Database error in find_user: {e}")
             return Failure("A database error occurred.")
 
@@ -47,7 +46,6 @@ class DAL:
                 return Success(user)
             return Failure("User not found.")
         except sqlite3.Error as e:
-            # database errors (e.g., table not found)
             print(f"Database error in find_user: {e}")
             return Failure("A database error occurred.")
 
@@ -76,16 +74,27 @@ class DAL:
 
     @staticmethod
     def update_password(
-        db_: DbConnection, user_id: int, new_password: str
+        db_: DbConnection, user_id: int, old_password: str, new_password: str
     ) -> Result[None, str]:
         """
         updates a user's password.
         returns Success(None) or Failure(str)
         """
-        hashed_password = generate_password_hash(new_password)
         try:
             if not new_password:
                 return Failure("No new password given")
+
+            user = db_.execute(
+                "SELECT password FROM users WHERE id = ?", (user_id,)
+            ).fetchone()
+
+            if not user:
+                return Failure("User not found.")
+
+            if not check_password_hash(user[0], old_password):
+                return Failure("Incorrect current password.")
+
+            hashed_new_password = generate_password_hash(new_password)
 
             db_.execute(
                 """
@@ -94,15 +103,15 @@ class DAL:
                 WHERE id = ?
                 """,
                 (
-                    hashed_password,
+                    hashed_new_password,
                     user_id,
                 ),
             )
             db_.commit()
             return Success(None)
         except sqlite3.Error as e:
-            print(f"database error in edit_note: {e}")
-            return Failure("could not update note due to a database error.")
+            print(f"database error in update_password: {e}")
+            return Failure("could not update password due to a database error.")
 
     @staticmethod
     def get_note_by_id(
@@ -121,7 +130,7 @@ class DAL:
             if note:
                 return Success(note)
             return Failure(
-                "No note was found with the given id, created by the given user"
+                "No note was found with the given id, created by the given user."
             )
         except sqlite3.Error as e:
             print(f"Database error in get_note_by_id: {e}")
@@ -168,7 +177,7 @@ class DAL:
 
     @staticmethod
     def edit_note(
-        db_: DbConnection, note_id: int, new_content: str
+        db_: DbConnection, note_id: int, user_id: int, new_content: str
     ) -> Result[None, str]:
         """
         updates a note by note_id
@@ -178,18 +187,24 @@ class DAL:
             if not new_content:
                 return Failure("note content cannot be empty.")
 
-            db_.execute(
+            cursor = db_.execute(
                 """
                 UPDATE notes 
                 SET content = ?
                 WHERE id = ?
+                AND user_id = ?
                 """,
                 (
                     new_content,
                     note_id,
+                    user_id,
                 ),
             )
             db_.commit()
+
+            if cursor.rowcount == 0:
+                # The user has not notes with that id.
+                return Failure("You do not have a note with the given id.")
             return Success(None)
         except sqlite3.Error as e:
             print(f"Database error in edit_note: {e}")
