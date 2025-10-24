@@ -20,20 +20,23 @@
         {% endif %}
         <main class="flex-container">
             <form method="post"
-                  action="{% if note %}{{ url_for('edit_note', note_id=note_id) }}{% else %}{{ url_for("new_note") }}{% endif %}"
+                  action="{% if note %}{{ url_for('edit_note', note_id=note[0]) }}{% else %}{{ url_for("new_note") }}{% endif %}"
                   class="form-container">
                 <div class="form-group">
                     <label for="note_content">Note Content</label>
-                    <textarea id="note_content" name="note_content" class="form-input" required minlength="1" rows="10">
-                    {% if note %}{{ note[2] }}{% endif %}
-                    </textarea>
+                    <textarea id="note_content"
+                              name="note_content"
+                              class="form-input"
+                              required
+                              minlength="1"
+                              rows="10">{% if note %}{{ note[1] }}{% endif %}</textarea>
                 </div>
                 <div class="form-actions">
                     <button type="submit" class="btn">Save</button>
                     <a href="{{ url_for("notes") }}" class="btn btn-secondary">Cancel</a>
                     {% if note %}
                         <button type="submit"
-                                formaction="{{ url_for('delete_note', note_id=note_id) }}"
+                                formaction="{{ url_for('delete_note', note_id=note[0]) }}"
                                 class="btn btn-secondary">Delete Note</button>
                     {% endif %}
                 </div>
