@@ -15,6 +15,7 @@ venv/
 build/
 dist/
 tests/
+scripts/
 *.egg-info
 requirements-dev.txt
 
