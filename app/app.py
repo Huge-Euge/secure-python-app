@@ -6,6 +6,7 @@ from datetime import timedelta
 import os
 import json
 import sqlite3
+import logging
 from flask import Flask, render_template, flash, request, redirect, session, url_for, g
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -93,6 +94,7 @@ def register():
         creation_result = DAL.create_user(db_, username, password)
         if isinstance(creation_result, Success):
             flash("Account successfully registered!", "notification")
+            app.logger.info("User %s created.", creation_result.unwrap())
             return redirect(url_for("login"))
         # If creation_result is a failure because there was already a user with that username,
         # let them know.
@@ -136,6 +138,7 @@ def login():
             return redirect(url_for("login"))
         # else:
         session["user_id"] = res_user.unwrap()[0]
+        app.logger.info("User %s logged in", res_user.unwrap()[0])
         flash("Login successful.", "notification")
         return redirect(url_for("index"))
 
@@ -148,7 +151,9 @@ def logout():
     """
     Defines the /logout endpoint that scrubs the session cookie and redirects to /
     """
+    logout_id = session["user_id"]
     session.clear()
+    app.logger.info("User %s logged out", logout_id)
     flash("You have successfully logged out.", "notification")
     return redirect(url_for("index"))
 
@@ -201,6 +206,7 @@ def new_note():
         if isinstance(res_create_note, Failure):
             flash(res_create_note.failure(), "error")
             return redirect(url_for("new_note"))
+        app.logger.info("User %s created note %s", user_id, res_create_note.unwrap())
         flash("Note successfully edited.", "notification")
 
         return redirect(url_for("notes"))
@@ -238,6 +244,7 @@ def edit_note(note_id: int):
         if isinstance(res_edit_note, Failure):
             flash(res_edit_note.failure(), "error")
             return redirect(url_for("edit_note", note_id=note_id))
+        app.logger.info("User %s edited note %s", user_id, note_id)
         flash("Note successfully edited.", "notification")
         return redirect(url_for("notes"))
 
@@ -265,6 +272,9 @@ def delete_note(note_id: int):
     res_delete_note = DAL.delete_note(db_, note_id, user_id)
     if isinstance(res_delete_note, Failure):
         flash(res_delete_note.failure(), "error")
+        return redirect(url_for("delete_note", note_id=note_id))
+    app.logger.info("User %s deleted note %s", user_id, note_id)
+    flash("Note successfully edited.", "notification")
 
     return redirect(url_for("notes"))
 

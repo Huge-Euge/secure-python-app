@@ -52,19 +52,21 @@ class DAL:
     @staticmethod
     def create_user(
         db_: DbConnection, username: str, password: str
-    ) -> Result[None, str]:
+    ) -> Result[int, str]:
         """
         Creates a new user in the database.
-        Returns Success(None) or Failure(str).
+        Returns Success(user_id: int) or Failure(str).
         """
         hashed_password = generate_password_hash(password)
         try:
-            db_.execute(
+            cursor = db_.execute(
                 "INSERT INTO users (username, password) VALUES (?, ?)",
                 (username, hashed_password),
             )
             db_.commit()
-            return Success(None)
+            if cursor.lastrowid:
+                return Success(cursor.lastrowid)
+            return Failure("An unknown error occurred.")
         except sqlite3.IntegrityError:
             # error occurs if the username is not unique
             return Failure("This username is already taken.")
@@ -156,7 +158,7 @@ class DAL:
     @staticmethod
     def create_note_for_user(
         db_: DbConnection, user_id: int, content: str
-    ) -> Result[None, str]:
+    ) -> Result[int, str]:
         """
         Creates a new note for a given user.
         Returns Success() or Failure.
@@ -165,12 +167,15 @@ class DAL:
             if not content:
                 return Failure("Note content cannot be empty.")
 
-            db_.execute(
+            cursor = db_.execute(
                 "INSERT INTO notes (user_id, content) VALUES (?, ?)",
                 (user_id, content),
             )
             db_.commit()
-            return Success(None)
+            # Return the id of the created note for logging
+            if cursor.lastrowid:
+                return Success(cursor.lastrowid)
+            return Failure("An unknown error occurred.")
         except sqlite3.Error as e:
             print(f"Database error in create_note_for_user: {e}")
             return Failure("Could not save note due to a database error.")
